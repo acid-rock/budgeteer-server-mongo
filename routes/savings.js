@@ -1,25 +1,24 @@
 const express = require("express");
 const router = express.Router();
-const db = require("../database/connection");
 const { ObjectId } = require("mongodb");
+const db = require("../database/connection");
 
 // Collection
-const collection = db.collection("transactions");
+const collection = db.collection("savings");
 
 // Test
 router.get("/", (req, res) => {
   return res.send("Hello World!");
 });
 
-// Get all user's transaction records from database
+// Get all of user's savings acccounts
 router.get("/fetch", async (req, res) => {
   const { user_id } = req.query;
 
   try {
-    let results = await collection.find({ user_id: user_id }).toArray();
+    let results = await collection.find({ owner_id: user_id }).toArray();
 
-    // Return 404 if empty.
-    if (results.length) return res.sendStatus(404);
+    if (!results.length) return res.sendStatus(404);
 
     return res.status(200).json(results);
   } catch (err) {
@@ -27,26 +26,17 @@ router.get("/fetch", async (req, res) => {
   }
 });
 
-// Get a user's transaction via ID search
-router.get("/fetch/:id", async (req, res) => {
-  const { user_id } = req.query;
-  const doc_id = req.params.id;
+// Get all transactions related to the savings' account ID
+router.get("/fetchTransactions/:id", async (req, res) => {
+  const account_id = req.params.id;
 
-  try {
-    let result = await collection.findOne({
-      user_id: user_id,
-      _id: new ObjectId(doc_id),
-    });
+  let transactions = db.collection("transactions");
+  let results = await transactions.find({ savings_id: account_id }).toArray();
 
-    if (!result) return res.sendStatus(404);
-
-    return res.status(200).json(result);
-  } catch (err) {
-    return res.status(500).json({ message: err.message });
-  }
+  return res.status(200).json(results);
 });
 
-// Create a transaction
+// Open/create a savings account for user
 router.post("/create", async (req, res) => {
   try {
     let document = await collection.insertOne(req.body);
@@ -57,14 +47,14 @@ router.post("/create", async (req, res) => {
   }
 });
 
-// Update a transaction through ID search
+// Update a savings account via ID
 router.post("/update/:id", async (req, res) => {
-  const { user_id } = req.query;
-  const doc_id = req.params.id;
+  const { owner_id } = req.query;
+  const savings_id = req.params.id;
 
   const filter = {
-    _id: new ObjectId(doc_id),
-    user_id: user_id,
+    _id: new ObjectId(savings_id),
+    owner_id: owner_id,
   };
 
   try {
@@ -79,15 +69,15 @@ router.post("/update/:id", async (req, res) => {
   }
 });
 
-// Delete a transaction via ID search
+// Delete a savings account through ID
 router.delete("/delete/:id", async (req, res) => {
-  const { user_id } = req.query;
-  const doc_id = req.params.id;
+  const { owner_id } = req.query;
+  const savings_id = req.params.id;
 
   try {
     let result = await collection.deleteOne({
-      _id: new ObjectId(doc_id),
-      user_id: user_id,
+      _id: new ObjectId(savings_id),
+      owner_id: owner_id,
     });
 
     if (result.deletedCount === 0) return res.sendStatus(404);
